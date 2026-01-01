@@ -1,0 +1,41 @@
+{
+  "name": "user-service-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "user_service_user",
+    "database.password": "user_pass",
+    "database.dbname": "user_service_db",
+    "database.server.name": "user-service",
+    "topic.prefix": "user-service",
+    "plugin.name": "pgoutput",
+    "publication.name": "user_outbox_publication",
+    "slot.name": "user_outbox_slot",
+    "table.include.list": "public.outbox_events",
+    "tombstones.on.delete": "false",
+    
+    "poll.interval.ms": "100",
+    "max.batch.size": "2048",
+    "max.queue.size": "8192",
+    
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.table.field.event.id": "id",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.type": "event_type",
+    "transforms.outbox.table.field.event.payload": "payload",
+    "transforms.outbox.route.by.field": "topic",
+    "transforms.outbox.route.topic.replacement": "${routedByValue}",
+    "transforms.outbox.table.fields.additional.placement": "trace_id:header,correlation_id:header,source:header,schema_version:header",
+    
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter",
+    
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    
+    "errors.tolerance": "none",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}

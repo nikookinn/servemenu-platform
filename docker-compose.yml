@@ -1,0 +1,395 @@
+services:
+
+  postgres:
+    container_name: postgres-db
+    image: postgres:17-bookworm
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_KC_DB: ${POSTGRES_KC_DB}
+      KC_DB_USER: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      USER_SERVICE_DB: ${USER_SERVICE_DB}
+      USER_SERVICE_USER: ${USER_SERVICE_USER}
+      USER_SERVICE_PASSWORD: ${USER_SERVICE_PASSWORD}
+      BUSINESS_SERVICE_DB: ${BUSINESS_SERVICE_DB}
+      BUSINESS_SERVICE_USER: ${BUSINESS_SERVICE_USER}
+      BUSINESS_SERVICE_PASSWORD: ${BUSINESS_SERVICE_PASSWORD}
+      MEDIA_SERVICE_DB: ${MEDIA_SERVICE_DB}
+      MEDIA_SERVICE_USER: ${MEDIA_SERVICE_USER}
+      MEDIA_SERVICE_PASSWORD: ${MEDIA_SERVICE_PASSWORD}
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:26.4.0
+    command: start-dev
+    environment:
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: ${POSTGRES_URL}/${POSTGRES_KC_DB}
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_KAFKA_BOOTSTRAP_SERVERS: ${KC_KAFKA_BOOTSTRAP_SERVERS}
+    ports:
+      - 8081:8080
+    volumes:
+      - ./keycloak/keycloak-otp-email-provider/build/libs/keycloak-otp-email-provider.jar:/opt/keycloak/providers/keycloak-otp-email-provider.jar
+      - ./keycloak/keycloak-event/build/libs/keycloak-event-0.0.1-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-event.jar
+      - ./keycloak/keycloakify-starter/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar:/opt/keycloak/providers/keycloak-theme-for-kc-all-other-versions.jar
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      broker01:
+        condition: service_started
+      broker02:
+          condition: service_started
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+
+  # begin Confluent Kafka cluster
+  broker01:
+    image: confluentinc/cp-kafka:7.9.1
+    container_name: broker01
+    hostname: broker01
+    ports:
+      - 9092:9092
+      - 9101:9101
+      - 29092:29092
+    environment:
+      KAFKA_NODE_ID: 1001
+      KAFKA_LISTENERS: 'PLAINTEXT://broker01:29092,CONTROLLER://broker01:29193,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker01:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1001@broker01:29193,1002@broker02:29194"
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # Replace CLUSTER_ID with a unique base64 UUID using "bin/kafka-storage.sh random-uuid"
+      # See https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#kafka-storage-sh
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+    volumes:
+      - kafka_broker01_data:/var/lib/kafka/data
+      - kafka_broker01_logs:/var/log/kafka
+    networks:
+      - microservice-network
+
+  broker02:
+    image: confluentinc/cp-kafka:7.9.1
+    container_name: broker02
+    hostname: broker02
+    depends_on:
+      - broker01
+    ports:
+      - 9093:9093
+      - 9102:9102
+      - 29093:29093
+    environment:
+      KAFKA_NODE_ID: 1002
+      KAFKA_LISTENERS: 'PLAINTEXT://broker02:29093,CONTROLLER://broker02:29194,PLAINTEXT_HOST://0.0.0.0:9093'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker02:29093,PLAINTEXT_HOST://localhost:9093'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9102
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1001@broker01:29193,1002@broker02:29194"
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+    volumes:
+      - kafka_broker02_data:/var/lib/kafka/data
+      - kafka_broker02_logs:/var/log/kafka
+    networks:
+      - microservice-network
+
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:8.1.0
+    container_name: schema-registry
+    hostname: schema-registry
+    depends_on:
+      - broker01
+      - broker02
+    ports:
+      - 9081:9081
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker01:29092,broker02:29093'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:9081
+    networks:
+    - microservice-network
+
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 9021:8080  # Control Center'ın portunu kullan
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker01:29092,broker02:29093
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:9081
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://debezium-connect:8083
+    depends_on:
+      - broker01
+      - broker02
+      - schema-registry
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+  # Debezium Kafka Connect with Confluent Schema Registry
+  debezium-connect:
+    container_name: debezium-connect
+    image: confluentinc/cp-kafka-connect:8.1.0
+    ports:
+      - 8085:8083
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: broker01:29092,broker02:29093
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: debezium-group
+      CONNECT_CONFIG_STORAGE_TOPIC: debezium_connect_configs
+      CONNECT_OFFSET_STORAGE_TOPIC: debezium_connect_offsets
+      CONNECT_STATUS_STORAGE_TOPIC: debezium_connect_statuses
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: debezium-connect
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Debezium PostgreSQL Connector..."
+        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:latest
+        echo "Debezium connector installed!"
+        echo "Starting Kafka Connect..."
+        /etc/confluent/docker/run
+    depends_on:
+      - postgres
+      - broker01
+      - broker02
+      - schema-registry
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # end Clonfluent cluster
+
+  redis:
+    container_name: redis
+    image: redis:8.2.3
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:9.3.0
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - 9090:80
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  localstack:
+    container_name: localstack
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=eu-central-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - PERSISTENCE=1
+      - EXTRA_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+      - EXTRA_CORS_ALLOWED_HEADERS=*
+    volumes:
+      - "localstack_data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - microservice-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4566/_localstack/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Observability Stack
+  
+  zipkin:
+    container_name: zipkin
+    image: openzipkin/zipkin:3.5.1
+    ports:
+      - 9411:9411
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    environment:
+      - STORAGE_TYPE=mem
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v3.7.3
+    ports:
+      - 9091:9090
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:11.4.0
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - microservice-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # ClamAV - Antivirus Scanner for Media Service
+  clamav:
+    container_name: clamav
+    image: clamav/clamav:latest
+    ports:
+      - 3310:3310
+    volumes:
+      - clamav_data:/var/lib/clamav
+    environment:
+      - CLAMAV_NO_FRESHCLAM=false  # Enable virus definition updates
+      - FRESHCLAM_CHECKS=24         # Check for updates every 24 hours
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # ClamAV needs time to load virus definitions
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin:
+  kafka_broker01_data:
+  kafka_broker01_logs:
+  kafka_broker02_data:
+  kafka_broker02_logs:
+  localstack_data:
+  prometheus_data:
+  grafana_data:
+  clamav_data:
+
+networks:
+  microservice-network:
+    driver: bridge

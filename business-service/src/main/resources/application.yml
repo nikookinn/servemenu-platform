@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: business-service
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+# Application Security Configuration
+app:
+  security:
+    # Internal Service Token for service-to-service communication
+    # ⚠️ IMPORTANT: Change this in production and store in Kubernetes secrets
+    # This token is shared between microservices (QR Service, etc.)
+    internal-service-token: ${INTERNAL_SERVICE_TOKEN:dev-internal-secret-token-change-in-production}

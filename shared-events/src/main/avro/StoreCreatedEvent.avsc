@@ -1,0 +1,14 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "StoreCreatedEvent",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "storeId", "type": "string"},
+    {"name": "businessId", "type": "string"},
+    {"name": "storeName", "type": "string"},
+    {"name": "isDefault", "type": "boolean"}
+  ]
+}

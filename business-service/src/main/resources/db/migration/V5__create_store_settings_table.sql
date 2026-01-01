@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS store_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL UNIQUE REFERENCES stores(id) ON DELETE CASCADE,
+    enable_dine_in BOOLEAN DEFAULT TRUE NOT NULL,
+    enable_takeaway BOOLEAN DEFAULT FALSE NOT NULL,
+    enable_pickup BOOLEAN DEFAULT FALSE NOT NULL,
+    enable_delivery BOOLEAN DEFAULT FALSE NOT NULL,
+    enable_guest_checkout BOOLEAN DEFAULT TRUE NOT NULL,
+    allow_special_instructions BOOLEAN DEFAULT TRUE NOT NULL,
+    display_full_food_name BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );

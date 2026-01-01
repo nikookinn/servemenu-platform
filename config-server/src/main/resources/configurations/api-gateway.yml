@@ -1,0 +1,271 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: api-gateway
+  
+  # Codec configuration for large file uploads
+  codec:
+    max-in-memory-size: 10MB
+  
+  # Resilience4j Circuit Breaker Configuration
+  resilience4j:
+    circuitbreaker:
+      configs:
+        default:
+          slidingWindowSize: 10
+          minimumNumberOfCalls: 5
+          permittedNumberOfCallsInHalfOpenState: 3
+          waitDurationInOpenState: 10s
+          failureRateThreshold: 50
+          slowCallRateThreshold: 100
+          slowCallDurationThreshold: 60s
+      instances:
+        mediaServiceCircuitBreaker:
+          baseConfig: default
+    timelimiter:
+      configs:
+        default:
+          timeoutDuration: 30s
+      instances:
+        mediaServiceCircuitBreaker:
+          baseConfig: default
+  
+  # Cloud Gateway Configuration (2025.x - Latest)
+  cloud:
+    gateway:
+      # HTTP client configuration for file uploads
+      httpclient:
+        response-timeout: 30000  # 30 seconds in milliseconds
+        connect-timeout: 5000    # 5 seconds in milliseconds
+      
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+              - "${FRONTEND_URL:http://localhost:5173}"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowed-headers:
+              - "*"
+            allow-credentials: true
+            max-age: 3600
+
+      # Discovery Locator (Eureka integration)
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Default Filters (applied to all routes)
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - name: CircuitBreaker
+          args:
+            name: defaultCircuitBreaker
+            fallback-uri: forward:/fallback
+            timeout: 10s
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST,PUT,DELETE
+            backoff:
+              first-backoff: 50ms
+              max-backoff: 500ms
+              factor: 2
+              based-on-previous-value: false
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenish-rate: 100
+              burst-capacity: 200
+              requested-tokens: 1
+            key-resolver: "#{@ipKeyResolver}"
+
+      # Route Definitions
+      routes:
+            # ============ User Service Routes ============
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/users/**,/api/v1/business-owners/**,/api/v1/store-users/**,/api/v1/customers/**,/api/v1/preferences/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: userServiceCircuitBreaker
+                    fallback-uri: forward:/fallback/user-service
+                - RewritePath=/api/v1/(?<segment>.*), /api/v1/$\{segment}
+
+            # ============ Business Service Routes ============
+            - id: business-service
+              uri: lb://business-service
+              predicates:
+                - Path=/api/v1/businesses/**,/api/v1/stores/**,/api/v1/menus/**,/api/v1/tables/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: businessServiceCircuitBreaker
+                    fallback-uri: forward:/fallback/business-service
+                    timeout: 10s
+                - RewritePath=/api/v1/(?<segment>.*), /api/v1/$\{segment}
+
+            # ============ Media Service Routes ============
+            - id: media-service
+              uri: lb://media-service
+              predicates:
+                - Path=/api/v1/media/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: mediaServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/media-service
+                - RewritePath=/api/v1/(?<segment>.*), /api/v1/$\{segment}
+
+            # ============ Health Check Routes (No Auth) ============
+            - id: user-service-health
+              uri: lb://user-service
+              predicates:
+                - Path=/actuator/health/user-service
+              filters:
+                - RewritePath=/actuator/health/user-service, /actuator/health
+                - RemoveRequestHeader=Authorization
+
+            - id: business-service-health
+              uri: lb://business-service
+              predicates:
+                - Path=/actuator/health/business-service
+              filters:
+                - RewritePath=/actuator/health/business-service, /actuator/health
+                - RemoveRequestHeader=Authorization
+
+            - id: media-service-health
+              uri: lb://media-service
+              predicates:
+                - Path=/actuator/health/media-service
+              filters:
+                - RewritePath=/actuator/health/media-service, /actuator/health
+                - RemoveRequestHeader=Authorization
+
+  # Redis Configuration (for rate limiting)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  # OAuth2 Resource Server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/servemenu-platform}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8081/realms/servemenu-platform/protocol/openid-connect/certs}
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Resilience4j Configuration (2025.x)
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 5s
+        failure-rate-threshold: 50
+        event-consumer-buffer-size: 10
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+    instances:
+      userServiceCircuitBreaker:
+        base-config: default
+      businessServiceCircuitBreaker:
+        base-config: default
+
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 100ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+
+# Management & Actuator (2025.x)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,circuitbreakers,ratelimiters
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+
+# Logging Configuration (2025.x)
+logging:
+  level:
+    root: INFO
+    com.servemenu.apigateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    io.github.resilience4j: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/api-gateway.%d{yyyy-MM-dd}.log
+      max-file-size: 10MB
+      max-history: 30

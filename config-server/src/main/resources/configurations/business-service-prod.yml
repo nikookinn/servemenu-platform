@@ -1,0 +1,45 @@
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        generate_statistics: false
+
+  cache:
+    redis:
+      time-to-live: 7200000  # 2 hours in production
+
+# gRPC Client Configuration
+grpc:
+  client:
+    media-service:
+      address: 'dns:///media-service:9091'  # Kubernetes service discovery
+      negotiationType: plaintext
+      enableKeepAlive: true
+      keepAliveTime: 30s
+      keepAliveTimeout: 5s
+      # Load balancing
+      defaultLoadBalancingPolicy: round_robin
+      # Retry policy
+      maxRetryAttempts: 3
+      initialBackoffMs: 100
+      maxBackoffMs: 1000
+      backoffMultiplier: 2.0
+      # Connection pool
+      maxInboundMessageSize: 4MB
+      maxInboundMetadataSize: 8KB
+
+logging:
+  level:
+    root: WARN
+    com.servemenu.businessservice: INFO
+    org.springframework.kafka: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: ERROR
+    net.devh.boot.grpc: WARN
+
+management:
+  endpoint:
+    health:
+      show-details: never

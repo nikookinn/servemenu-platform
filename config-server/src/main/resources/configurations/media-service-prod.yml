@@ -1,0 +1,200 @@
+server:
+  port: 8086
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 200  # Not used with virtual threads
+      min-spare: 20
+    max-connections: 10000
+    accept-count: 100
+    connection-timeout: 20s
+
+# Java 21 Virtual Threads - Project Loom
+spring:
+  threads:
+    virtual:
+      enabled: true  # Enable Virtual Threads - supports millions of concurrent requests!
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # Database - Production PostgreSQL (Docker Container)
+  datasource:
+    url: jdbc:postgresql://postgres:5432/${MEDIA_SERVICE_DB}
+    username: ${MEDIA_SERVICE_USER}
+    password: ${MEDIA_SERVICE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # Security - Keycloak OAuth2 Resource Server (Production)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: -1ms
+        shutdown-timeout: 100ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000  # 30 minutes default
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "media:"
+
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 9091
+    enable-keep-alive: true
+    keep-alive-time: 30s
+    keep-alive-timeout: 5s
+    permit-keep-alive-without-calls: true
+    max-inbound-message-size: 4MB
+    max-concurrent-calls-per-connection: 100
+
+# Eureka - Production
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+    registry-fetch-interval-seconds: 30
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    instance-id: ${spring.application.name}:${HOSTNAME}:${spring.application.instance_id:${random.value}}
+    metadata-map:
+      grpc-port: 9091
+      zone: ${ZONE:eu-central-1a}
+      version: ${VERSION:1.0.0}
+      environment: production
+
+# AWS S3 - Production Configuration
+aws:
+  region: ${AWS_REGION:eu-central-1}
+  # Credentials will be loaded from:
+  # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+  # 2. IAM Instance Profile (EC2/ECS)
+  # 3. AWS credentials file (~/.aws/credentials)
+
+  s3:
+    bucket-name: ${S3_BUCKET_NAME:servemenu-media-prod}
+    region: ${AWS_REGION:eu-central-1}
+    path-style-access: false
+    use-local: false
+
+    # CloudFront CDN (optional)
+    cdn-domain: ${CDN_DOMAIN:}  # e.g., d123abc.cloudfront.net
+
+    # S3 Performance optimization
+    upload-timeout: 120
+    connection-timeout: 30
+    max-connections: 100
+    use-accelerate-endpoint: false  # S3 Transfer Acceleration
+    presigned-url-expiration: 15  # minutes
+
+# ClamAV Configuration
+clamav:
+  enabled: ${CLAMAV_ENABLED:true}
+  host: ${CLAMAV_HOST:clamav}
+  port: ${CLAMAV_PORT:3310}
+  timeout: 60000  # 60 seconds
+
+# Logging - Production level
+logging:
+  level:
+    root: WARN
+    com.servemenu: INFO
+    com.servemenu.media: INFO
+    org.springframework.web: WARN
+    software.amazon.awssdk: WARN
+  file:
+    name: /var/log/servemenu/media-service.log
+    max-size: 50MB
+    max-history: 30
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Media Config - Strict for production
+media:
+  validation:
+    strict-mode: true
+    check-image-integrity: true
+  max-file-size: 10485760  # 10MB
+  image:
+    max-width: 2048
+    max-height: 2048
+    quality: 0.85
+
+# Actuator - Restricted
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,resilience4j
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: production
+    distribution:
+      percentiles-histogram:
+        resilience4j.circuitbreaker.calls: true
+        resilience4j.ratelimiter.calls: true
+        http.server.requests: true
+
+# Security (if needed)
+# spring:
+#   security:
+#     oauth2:
+#       resourceserver:
+#         jwt:
+#           issuer-uri: ${KEYCLOAK_ISSUER_URI}

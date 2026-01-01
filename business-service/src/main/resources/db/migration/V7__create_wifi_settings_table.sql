@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS wifi_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL UNIQUE REFERENCES stores(id) ON DELETE CASCADE,
+    wifi_type VARCHAR(50) NOT NULL,
+    ssid VARCHAR(255) NOT NULL,
+    password VARCHAR(500),
+    qr_code_url VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );

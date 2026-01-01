@@ -1,0 +1,18 @@
+rootProject.name = 'servemenu-platform'
+
+// Shared Events Module (Avro schemas) - Commented out, build separately when needed
+// include 'shared-events'
+
+// Microservices
+include 'api-gateway'
+include 'config-server'
+include 'discovery-service'
+include 'user-service'
+include 'business-service'
+include 'media-service'
+include 'shared-events'
+include 'keycloak-event'
+include 'keycloak-otp-email-provider'
+project(':keycloak-event').projectDir = file('keycloak/keycloak-event')
+project(':keycloak-otp-email-provider').projectDir = file('keycloak/keycloak-otp-email-provider' +
+        '')

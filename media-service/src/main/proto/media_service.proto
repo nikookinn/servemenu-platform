@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.servemenu.mediaservice.grpc";
+option java_outer_classname = "MediaServiceProto";
+
+package media;
+
+/**
+ * Media Service - gRPC API for inter-service communication
+ * Provides media asset information to other microservices
+ * 
+ * Version: 1.0.0
+ * Last Updated: 2025-11-12
+ */
+service MediaGrpcService {
+  // Get single media asset by ID
+  rpc GetMediaById (GetMediaByIdRequest) returns (MediaResponse);
+  
+  // Get multiple media assets by IDs (batch operation for performance)
+  rpc GetMediaByIds (GetMediaByIdsRequest) returns (GetMediaByIdsResponse);
+  
+  // Get all media assets for a specific entity
+  rpc GetMediaByEntityId (GetMediaByEntityIdRequest) returns (GetMediaByEntityIdResponse);
+  
+  // Check if media exists (lightweight operation)
+  rpc MediaExists (MediaExistsRequest) returns (MediaExistsResponse);
+  
+  // Delete media asset (soft delete)
+  rpc DeleteMedia (DeleteMediaRequest) returns (DeleteMediaResponse);
+}
+
+// ============ Request Messages ============
+
+message GetMediaByIdRequest {
+  string media_id = 1;  // UUID as string
+}
+
+message GetMediaByIdsRequest {
+  repeated string media_ids = 1;  // List of UUIDs as strings
+}
+
+message GetMediaByEntityIdRequest {
+  string entity_id = 1;  // UUID as string
+  optional string media_type = 2;  // Optional filter by type
+}
+
+message MediaExistsRequest {
+  string media_id = 1;  // UUID as string
+}
+
+message DeleteMediaRequest {
+  string media_id = 1;  // UUID as string
+}
+
+// ============ Response Messages ============
+
+message MediaResponse {
+  string media_id = 1;
+  string file_name = 2;
+  string original_file_name = 3;
+  int64 file_size = 4;
+  string mime_type = 5;
+  string media_type = 6;  // LOGO, COVER_IMAGE, MENU_ITEM, TABLE_QR, WIFI_QR
+  string entity_id = 7;
+  
+  // URLs (CDN-ready, optimized per media type)
+  string thumbnail_url = 8;     // QR:500x500, Items:200x200, Logo:200x200, Cover:400x225
+  string medium_url = 9;        // Items:400x400 (customer app list) - empty for other types
+  string large_url = 10;        // QR:800x800, Items:800x800, Logo:1024x1024, Cover:1920x1080
+  string original_url = 11;     // Original size - for download
+  
+  // S3 Keys (for internal use)
+  string s3_key = 12;
+  
+  // Metadata
+  int64 created_at = 13;  // Unix timestamp
+  bool deleted = 14;
+}
+
+message GetMediaByIdsResponse {
+  map<string, MediaResponse> media_map = 1;  // media_id -> MediaResponse
+  repeated string not_found_ids = 2;  // IDs that were not found
+}
+
+message GetMediaByEntityIdResponse {
+  repeated MediaResponse media_list = 1;
+  int32 total_count = 2;
+}
+
+message MediaExistsResponse {
+  bool exists = 1;
+  string media_id = 2;
+}
+
+message DeleteMediaResponse {
+  bool success = 1;
+  string media_id = 2;
+  string message = 3;
+}
+
+// ============ Error Handling ============
+
+message ErrorDetails {
+  string code = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}

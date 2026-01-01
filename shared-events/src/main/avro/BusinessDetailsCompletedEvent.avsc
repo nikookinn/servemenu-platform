@@ -1,0 +1,50 @@
+{
+  "type": "record",
+  "name": "BusinessDetailsCompletedEvent",
+  "namespace": "com.servemenu.shared.events.avro",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique identifier for the event"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "businessId",
+      "type": "string",
+      "doc": "Business ID"
+    },
+    {
+      "name": "businessOwnerId",
+      "type": "string",
+      "doc": "Business owner user ID"
+    },
+    {
+      "name": "keycloakUserId",
+      "type": "string",
+      "doc": "Keycloak user ID"
+    },
+    {
+      "name": "defaultStoreId",
+      "type": "string",
+      "doc": "Default store ID"
+    },
+    {
+      "name": "isCompleted",
+      "type": "boolean",
+      "doc": "Whether onboarding is completed"
+    }
+  ]
+}

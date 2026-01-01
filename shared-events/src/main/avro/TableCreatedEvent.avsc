@@ -1,0 +1,16 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "TableCreatedEvent",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "tableId", "type": "string"},
+    {"name": "storeId", "type": "string"},
+    {"name": "businessId", "type": "string"},
+    {"name": "tableName", "type": "string"},
+    {"name": "tableNumber", "type": "string"},
+    {"name": "qrUrl", "type": ["null", "string"], "default": null}
+  ]
+}

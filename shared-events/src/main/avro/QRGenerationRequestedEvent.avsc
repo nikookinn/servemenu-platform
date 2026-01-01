@@ -1,0 +1,56 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "QRGenerationRequestedEvent",
+  "doc": "Event published when a QR code generation is requested for BUSINESS, TABLE, or WIFI",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Event type: QR_GENERATION_REQUESTED"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "storeId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Store ID (required for TABLE and WIFI, null for BUSINESS QR)"
+    },
+    {
+      "name": "businessId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Business ID (required for BUSINESS QR type)"
+    },
+    {
+      "name": "qrType",
+      "type": "string",
+      "doc": "QR Type: BUSINESS, TABLE, or WIFI"
+    },
+    {
+      "name": "targetUrl",
+      "type": "string",
+      "doc": "Target URL or QR data string (e.g., business URL, table URL, or WiFi string)"
+    },
+    {
+      "name": "metadata",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "Type-specific metadata (tableId, wifiSettingsId, etc.)"
+    }
+  ]
+}

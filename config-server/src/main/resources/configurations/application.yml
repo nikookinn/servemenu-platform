@@ -1,0 +1,60 @@
+# ============================================
+# Common Configuration for All Services
+# Spring Cloud Config Server - 2025 Best Practices
+# ============================================
+
+# Observability & Monitoring (All Services)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active:default}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  # Distributed Tracing (2025 - Micrometer Tracing)
+  tracing:
+    sampling:
+      probability: 1.0  # 100% for dev (use 0.1-0.3 in production)
+  # Zipkin Integration (2025 - New Config Path)
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+
+# Logging Configuration (2025 - Structured Logging)
+logging:
+  pattern:
+    # Includes trace context in logs
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}] [%t] %logger{36} - %msg%n"
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.cloud: INFO
+
+# Note: Service-specific configs (database, kafka, security) 
+# should be in {service-name}.yml files
+# 
+# Kafka tracing is enabled per-service in {service-name}.yml:
+#   spring.kafka.template.observation-enabled: true
+#   spring.kafka.listener.observation-enabled: true

@@ -1,0 +1,13 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "TableDeletedEvent",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "tableId", "type": "string"},
+    {"name": "storeId", "type": "string"},
+    {"name": "qrCodeMediaId", "type": ["null", "string"], "default": null}
+  ]
+}

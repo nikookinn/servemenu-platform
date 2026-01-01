@@ -1,0 +1,59 @@
+plugins {
+	id 'java'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.servemenu'
+version = '0.0.1-SNAPSHOT'
+description = 'keycloak event listeners'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Keycloak SPI
+	compileOnly("org.keycloak:keycloak-server-spi:26.4.0")
+	compileOnly("org.keycloak:keycloak-services:26.4.0")
+	compileOnly("org.keycloak:keycloak-core:26.4.0")
+
+	// Kafka Client
+	implementation("org.apache.kafka:kafka-clients:4.1.0")
+
+	// Jackson
+	implementation("com.fasterxml.jackson.core:jackson-databind:2.19.0")
+
+}
+
+tasks.jar {
+	archiveFileName = 'keycloak-event-0.0.1-SNAPSHOT.jar'
+
+	manifest {
+		attributes(
+				'Implementation-Title': 'Keycloak Kafka Event Publisher',
+				'Implementation-Version': version
+		)
+	}
+
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+	from {
+		configurations.runtimeClasspath.findAll {
+			!it.name.contains('keycloak')
+		}.collect {
+			it.isDirectory() ? it : zipTree(it)
+		}
+	} {
+		exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

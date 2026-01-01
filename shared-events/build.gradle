@@ -1,0 +1,61 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'com.github.davidmc24.gradle.plugin.avro' version '1.9.1'
+}
+
+group = 'com.servemenu'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://packages.confluent.io/maven/'
+    }
+}
+
+dependencies {
+    // Avro
+    implementation 'org.apache.avro:avro:1.12.0'
+    
+    // Kafka Avro Serializer (for Schema Registry)
+    implementation 'io.confluent:kafka-avro-serializer:7.9.1'
+}
+
+// Avro configuration
+avro {
+    createSetters = true
+    fieldVisibility = "PRIVATE"
+    outputCharacterEncoding = "UTF-8"
+}
+
+// Add generated Avro sources to source sets
+sourceSets {
+    main {
+        java {
+            srcDirs 'build/generated-main-avro-java'
+        }
+    }
+}
+
+// Task to generate Avro classes
+tasks.named('compileJava') {
+    dependsOn 'generateAvroJava'
+}
+
+// Maven publishing configuration
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.servemenu'
+            artifactId = 'shared-events'
+            version = '1.0.0'
+        }
+    }
+}

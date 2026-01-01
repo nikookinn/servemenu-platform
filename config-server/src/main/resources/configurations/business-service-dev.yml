@@ -1,0 +1,56 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${BUSINESS_SERVICE_DB:business_service_db}
+    username: ${BUSINESS_SERVICE_USER:business_service_user}
+    password: ${BUSINESS_SERVICE_PASSWORD:business_pass}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  kafka:
+    bootstrap-servers: localhost:9092,localhost:9093
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# gRPC Configuration
+grpc:
+  server:
+    port: 9094
+    enable-keep-alive: true
+    keep-alive-time: 30s
+    keep-alive-timeout: 5s
+    permit-keep-alive-without-calls: true
+    max-inbound-message-size: 4MB
+  client:
+    media-service:
+      address: 'static://localhost:9096'
+      negotiationType: plaintext
+      enableKeepAlive: true
+      keepAliveTime: 30s
+      keepAliveTimeout: 5s
+      # Connection pooling
+      maxInboundMessageSize: 10MB
+      # Load balancing
+      defaultLoadBalancingPolicy: round_robin
+      # Retry policy
+      maxRetryAttempts: 3
+      initialBackoffMs: 100
+      maxBackoffMs: 1000
+      backoffMultiplier: 2.0
+      # Performance tuning
+      immediateFlushThreshold: 1024
+      flowControlWindow: 1048576
+
+logging:
+  level:
+    com.servemenu.businessservice: DEBUG
+    org.springframework.kafka: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    net.devh.boot.grpc: DEBUG

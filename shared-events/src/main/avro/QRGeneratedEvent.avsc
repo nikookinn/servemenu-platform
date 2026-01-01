@@ -1,0 +1,20 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "QRGeneratedEvent",
+  "doc": "Event published when a QR code is generated and ready for upload (supports BUSINESS, TABLE, WIFI)",
+  "fields": [
+    {"name": "eventId", "type": "string", "doc": "Unique event identifier"},
+    {"name": "eventType", "type": "string", "doc": "Event type: QRGenerated"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Event timestamp"},
+    {"name": "qrType", "type": "string", "doc": "QR Type: BUSINESS, TABLE, or WIFI"},
+    {"name": "storeId", "type": ["null", "string"], "default": null, "doc": "Store ID (null for BUSINESS QR, required for TABLE/WIFI)"},
+    {"name": "businessId", "type": ["null", "string"], "default": null, "doc": "Business ID (for BUSINESS QR)"},
+    {"name": "tableId", "type": ["null", "string"], "default": null, "doc": "Table ID (for TABLE QR)"},
+    {"name": "wifiSettingsId", "type": ["null", "string"], "default": null, "doc": "WiFi Settings ID (for WIFI QR)"},
+    {"name": "qrImageBase64", "type": "string", "doc": "Base64 encoded QR image"},
+    {"name": "qrImageSize", "type": "int", "doc": "QR image size in bytes"},
+    {"name": "qrUrl", "type": "string", "doc": "QR target URL or data string"},
+    {"name": "displayName", "type": ["null", "string"], "default": null, "doc": "Display name for the QR code (table name, wifi SSID, or business name)"}
+  ]
+}

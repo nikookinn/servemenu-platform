@@ -1,0 +1,55 @@
+{
+  "type": "record",
+  "name": "StoreUserCreatedEvent",
+  "namespace": "com.servemenu.shared.events.avro",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique identifier for the event"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds"
+    },
+    {
+      "name": "userId",
+      "type": "string",
+      "doc": "User ID"
+    },
+    {
+      "name": "keycloakUserId",
+      "type": "string",
+      "doc": "Keycloak user ID"
+    },
+    {
+      "name": "businessId",
+      "type": "string",
+      "doc": "Business ID"
+    },
+    {
+      "name": "storeId",
+      "type": "string",
+      "doc": "Store ID"
+    },
+    {
+      "name": "accessLevel",
+      "type": "string",
+      "doc": "Store access level (ADMIN, STAFF, etc.)"
+    },
+    {
+      "name": "createdByUserId",
+      "type": "string",
+      "doc": "ID of user who created this store user"
+    }
+  ]
+}

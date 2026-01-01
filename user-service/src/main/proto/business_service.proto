@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.servemenu.businessservice.grpc";
+option java_outer_classname = "BusinessServiceProto";
+
+package business;
+
+// Business Service - gRPC API for inter-service communication
+service BusinessGrpcService {
+  // Get business by owner ID
+  rpc GetBusinessByOwnerId (GetBusinessByOwnerIdRequest) returns (BusinessResponse);
+  
+  // Get business by ID
+  rpc GetBusinessById (GetBusinessByIdRequest) returns (BusinessResponse);
+  
+  // Validate business ownership
+  rpc ValidateBusinessOwnership (ValidateOwnershipRequest) returns (ValidateOwnershipResponse);
+  
+  // Check store limit (for subscription validation)
+  rpc CheckStoreLimit (CheckStoreLimitRequest) returns (CheckStoreLimitResponse);
+}
+
+// ============ Request/Response Messages ============
+
+message GetBusinessByOwnerIdRequest {
+  string business_owner_id = 1;  // UUID as string
+}
+
+message GetBusinessByIdRequest {
+  string business_id = 1;  // UUID as string
+}
+
+message ValidateOwnershipRequest {
+  string user_id = 1;       // UUID as string
+  string business_id = 2;   // UUID as string
+}
+
+message ValidateOwnershipResponse {
+  bool is_owner = 1;
+  string message = 2;
+}
+
+message CheckStoreLimitRequest {
+  string business_id = 1;  // UUID as string
+}
+
+message CheckStoreLimitResponse {
+  bool can_create_more = 1;
+  int32 current_count = 2;
+  int32 max_allowed = 3;
+  string subscription_plan = 4;
+}
+
+message BusinessResponse {
+  string id = 1;
+  string business_owner_id = 2;
+  string keycloak_user_id = 3;
+  string business_name = 4;
+  string business_type = 5;
+  string currency = 6;
+  repeated string supported_languages = 7;
+  string default_language = 8;
+  string slug = 9;
+  string custom_domain = 10;
+  bool custom_domain_verified = 11;
+  bool onboarding_completed = 12;
+  string status = 13;
+  string subscription_plan = 14;
+  int64 created_at = 15;  // Unix timestamp
+  int64 updated_at = 16;  // Unix timestamp
+}
+
+// ============ Common Error Handling ============
+
+message ErrorDetails {
+  string code = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}
+

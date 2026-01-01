@@ -1,0 +1,17 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "MediaUploadedEvent",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "mediaId", "type": "string"},
+    {"name": "entityId", "type": "string"},
+    {"name": "storeId", "type": ["null", "string"], "default": null},
+    {"name": "mediaType", "type": "string"},
+    {"name": "originalUrl", "type": "string"},
+    {"name": "largeUrl", "type": "string"},
+    {"name": "thumbnailUrl", "type": "string"}
+  ]
+}

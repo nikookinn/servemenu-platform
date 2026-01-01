@@ -1,0 +1,132 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.7'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.protobuf' version '0.9.4'
+	// id 'com.github.davidmc24.gradle.plugin.avro' version '1.9.1' // DISABLED - using shared-events JAR
+}
+
+group = 'com.servemenu'
+version = '0.0.1-SNAPSHOT'
+description = 'Business service for servemenu platform'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		url "https://packages.confluent.io/maven/"
+	}
+}
+
+ext {
+	set('springCloudVersion', "2025.0.0")
+	set('springGrpcVersion', "0.12.0")
+	set('grpcVersion', '1.68.2')
+	set('protobufVersion', '4.29.2')
+	set('grpcSpringBootStarterVersion', '3.1.0.RELEASE')
+}
+
+dependencies {
+	// Shared Events Module (Avro schemas) - local JAR
+	implementation files('../shared-events/build/libs/shared-events-1.0.0.jar')
+	
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'org.springframework.cloud:spring-cloud-starter-config'
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	implementation 'org.springframework.kafka:spring-kafka'
+	
+	// Avro & Schema Registry (needed even with shared-events JAR)
+	implementation 'io.confluent:kafka-avro-serializer:7.9.1'
+	implementation 'org.apache.avro:avro:1.12.0'
+	
+	// JSON Schema Validation
+	implementation 'com.networknt:json-schema-validator:1.5.3'
+	
+	implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.mapstruct:mapstruct:1.6.3'
+
+	// Observability & Monitoring
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+	implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
+
+	// gRPC dependencies
+	implementation 'io.grpc:grpc-services'
+	implementation 'net.devh:grpc-spring-boot-starter:3.1.0.RELEASE'
+	implementation 'net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE'
+	implementation 'io.grpc:grpc-protobuf:1.68.1'
+	implementation 'io.grpc:grpc-stub:1.68.1'
+	testImplementation 'org.springframework.grpc:spring-grpc-test'
+	
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+	runtimeOnly 'org.postgresql:postgresql'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.grpc:spring-grpc-dependencies:${springGrpcVersion}"
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// Protobuf configuration
+protobuf {
+	protoc {
+		artifact = "com.google.protobuf:protoc:4.29.2"
+	}
+	plugins {
+		grpc {
+			artifact = "io.grpc:protoc-gen-grpc-java:1.68.1"
+		}
+	}
+	generateProtoTasks {
+		all()*.plugins {
+			grpc {
+				option '@generated=omit'
+			}
+		}
+	}
+}
+
+// Avro configuration - DISABLED (using shared-events JAR)
+// avro {
+// 	createSetters = true
+// 	fieldVisibility = "PRIVATE"
+// 	outputCharacterEncoding = "UTF-8"
+// 	stringType = "String"
+// }
+
+// Add generated sources to the source sets
+sourceSets {
+	main {
+		java {
+			srcDirs 'build/generated/source/proto/main/grpc'
+			srcDirs 'build/generated/source/proto/main/java'
+			// srcDirs 'build/generated-main-avro-java' // DISABLED - using shared-events
+		}
+	}
+}

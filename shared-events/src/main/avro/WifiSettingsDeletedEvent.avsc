@@ -1,0 +1,42 @@
+{
+  "type": "record",
+  "name": "WifiSettingsDeletedEvent",
+  "namespace": "com.servemenu.shared.events.avro",
+  "doc": "Event published when WiFi settings are deleted (soft delete). Media Service uses this to clean up QR code images.",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique event identifier (UUID)"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Event type identifier (WIFI_SETTINGS_DELETED)"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event timestamp in milliseconds since epoch"
+    },
+    {
+      "name": "wifiSettingsId",
+      "type": "string",
+      "doc": "WiFi settings ID (UUID)"
+    },
+    {
+      "name": "storeId",
+      "type": "string",
+      "doc": "Store ID (UUID)"
+    },
+    {
+      "name": "qrCodeMediaId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "QR code media ID to be deleted (UUID), null if no QR code exists"
+    }
+  ]
+}

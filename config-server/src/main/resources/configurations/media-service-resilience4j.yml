@@ -1,0 +1,148 @@
+# Resilience4j Configuration for Media Service
+# Rate Limiting, Circuit Breaker, Retry, Bulkhead
+
+resilience4j:
+  # ==================== Rate Limiter ====================
+  ratelimiter:
+    configs:
+      default:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1m
+        timeoutDuration: 5s
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 100
+    
+    instances:
+      # Upload operations: 10 requests/minute
+      uploadRateLimiter:
+        baseConfig: default
+        limitForPeriod: 10
+        limitRefreshPeriod: 1m
+        timeoutDuration: 5s
+      
+      # Download operations: 100 requests/minute
+      downloadRateLimiter:
+        baseConfig: default
+        limitForPeriod: 100
+        limitRefreshPeriod: 1m
+        timeoutDuration: 2s
+      
+      # Delete operations: 5 requests/minute
+      deleteRateLimiter:
+        baseConfig: default
+        limitForPeriod: 5
+        limitRefreshPeriod: 1m
+        timeoutDuration: 3s
+  
+  # ==================== Circuit Breaker ====================
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 100
+        minimumNumberOfCalls: 10
+        permittedNumberOfCallsInHalfOpenState: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 5s
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 10
+    
+    instances:
+      # S3 operations circuit breaker
+      s3CircuitBreaker:
+        baseConfig: default
+        failureRateThreshold: 60
+        waitDurationInOpenState: 30s
+      
+      # Image processing circuit breaker
+      imageProcessingCircuitBreaker:
+        baseConfig: default
+        slowCallDurationThreshold: 10s
+  
+  # ==================== Retry ====================
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - com.servemenu.mediaservice.infrastructure.exception.InvalidMediaException
+    
+    instances:
+      # S3 upload retry
+      s3UploadRetry:
+        baseConfig: default
+        maxAttempts: 3
+        waitDuration: 2s
+      
+      # Image processing retry
+      imageProcessingRetry:
+        baseConfig: default
+        maxAttempts: 2
+        waitDuration: 1s
+  
+  # ==================== Bulkhead ====================
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 25
+        maxWaitDuration: 5s
+    
+    instances:
+      # Upload bulkhead
+      uploadBulkhead:
+        maxConcurrentCalls: 10
+        maxWaitDuration: 10s
+      
+      # Processing bulkhead
+      processingBulkhead:
+        maxConcurrentCalls: 5
+        maxWaitDuration: 15s
+  
+  # ==================== Time Limiter ====================
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 30s
+        cancelRunningFuture: true
+    
+    instances:
+      # Upload timeout
+      uploadTimeLimiter:
+        timeoutDuration: 60s
+      
+      # Processing timeout
+      processingTimeLimiter:
+        timeoutDuration: 30s
+
+# ==================== Management & Monitoring ====================
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        resilience4j.circuitbreaker.calls: true
+        resilience4j.ratelimiter.calls: true
+  
+  endpoint:
+    health:
+      show-details: always
+  
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,resilience4j

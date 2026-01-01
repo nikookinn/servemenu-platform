@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS location_details (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID NOT NULL UNIQUE REFERENCES stores(id) ON DELETE CASCADE,
+    is_enabled BOOLEAN DEFAULT FALSE NOT NULL,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    radius_in_meters INTEGER,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );

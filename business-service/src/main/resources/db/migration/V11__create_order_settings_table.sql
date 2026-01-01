@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS order_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL UNIQUE REFERENCES businesses(id) ON DELETE CASCADE,
+    enable_customer_tip BOOLEAN DEFAULT TRUE NOT NULL,
+    enable_cancel_order BOOLEAN DEFAULT TRUE NOT NULL,
+    invoice_id_prefix VARCHAR(20) DEFAULT 'INVOICE' NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );

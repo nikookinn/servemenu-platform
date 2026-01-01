@@ -1,0 +1,17 @@
+{
+  "namespace": "com.servemenu.shared.events.avro",
+  "type": "record",
+  "name": "BusinessCreatedEvent",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "eventType", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "businessId", "type": "string"},
+    {"name": "businessOwnerId", "type": "string"},
+    {"name": "keycloakUserId", "type": "string"},
+    {"name": "businessName", "type": "string"},
+    {"name": "slug", "type": "string"},
+    {"name": "currency", "type": "string"},
+    {"name": "supportedLanguages", "type": {"type": "array", "items": "string"}}
+  ]
+}

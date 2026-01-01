@@ -1,0 +1,164 @@
+server:
+  port: 8086  # Changed from 8085 (Debezium Connect uses 8085)
+  shutdown: graceful
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+  # Database - Local PostgreSQL (IntelliJ IDE)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/media_service_db
+    username: media_service_user
+    password: media_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000  # 30 minutes default
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "media:"
+
+  # Security - Keycloak OAuth2 Resource Server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/servemenu-platform
+          jwk-set-uri: http://localhost:8081/realms/servemenu-platform/protocol/openid-connect/certs
+
+# gRPC Server Configuration
+grpc:
+  server:
+    port: 9096
+    enable-keep-alive: true
+    keep-alive-time: 30s
+    keep-alive-timeout: 5s
+    permit-keep-alive-without-calls: true
+    max-inbound-message-size: 4MB
+
+# Eureka - Local
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
+    metadata-map:
+      grpc-port: 9096
+
+# AWS S3 - LocalStack Configuration
+aws:
+  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+  region: eu-central-1
+  access-key-id: test
+  secret-access-key: test
+
+  s3:
+    bucket-name: servemenu-media-dev
+    region: eu-central-1
+    path-style-access: true
+    force-path-style: true
+    endpoint-override: http://localhost:4566
+    use-local: true
+    auto-create-bucket: true
+    upload-timeout: 60
+    connection-timeout: 10
+    presigned-url-expiration: 15  # minutes
+
+
+# ClamAV Configuration
+clamav:
+  enabled: true
+  host: localhost
+  port: 3310
+  timeout: 60000  # 60 seconds
+
+# Logging - Verbose for development
+logging:
+  level:
+    root: INFO
+    com.servemenu: DEBUG
+    com.servemenu.media: DEBUG
+    org.springframework.web: DEBUG
+    software.amazon.awssdk: DEBUG
+    software.amazon.awssdk.request: DEBUG
+  file:
+    name: logs/media-service-dev.log
+    max-size: 10MB
+    max-history: 7
+
+# Media Config - Relaxed for dev
+media:
+  validation:
+    strict-mode: false
+    check-image-integrity: false
+  max-file-size: 5242880  # 5MB
+  image:
+    max-width: 1024
+    max-height: 1024
+    quality: 0.75
+
+# Actuator - Full access
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        resilience4j.circuitbreaker.calls: true
+        resilience4j.ratelimiter.calls: true
